@@ -5,6 +5,7 @@ import os
 import json
 from tqdm import tqdm
 import time
+import concurrent.futures
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
@@ -70,11 +71,10 @@ def main():
     selected_problems = [train_data[i] for i in selected_indices]
 
     results = {}
-
     traces_folder = f"traces"
     os.makedirs(traces_folder, exist_ok=True)
 
-    for month in range(1, 13):
+    def process_month(month):
         monthly_traces_file = f"{traces_folder}/month_{month:02d}_traces.json"
         if os.path.exists(monthly_traces_file):
             with open(monthly_traces_file, "r") as f:
@@ -97,8 +97,18 @@ def main():
             with open(monthly_traces_file, "w") as f:
                 json.dump(monthly_traces, f, indent=2)
             progress_bar.set_description(f"Month {month:02d} | Progress: {i+1}/{len(selected_problems)} | Correct: {correct_count} | Accuracy: {accuracy_so_far:.2%}")
-        results[f"month_{month:02d}"] = correct_count
-        time.sleep(5)  # Add a longer delay when switching months
+        return correct_count
+
+    # Use concurrent.futures to process all months simultaneously
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+        future_to_month = {executor.submit(process_month, month): month for month in range(1, 13)}
+        for future in concurrent.futures.as_completed(future_to_month):
+            month = future_to_month[future]
+            try:
+                correct_count = future.result()
+                results[f"month_{month:02d}"] = correct_count
+            except Exception as exc:
+                print(f'Month {month:02d} generated an exception: {exc}')
 
     # Save overall results
     with open(f"{traces_folder}/evaluation_results.json", "w") as f:
