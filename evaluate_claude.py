@@ -20,7 +20,7 @@ def get_response(prompt, month):
                 messages=[{"role": "user", "content": prompt}]
             )
             return response.content[0].text
-        except anthropic.RateLimitError as e:
+        except (anthropic.RateLimitError, anthropic.InternalServerError) as e:
             if attempt == max_retries - 1:
                 raise e
             delay = base_delay * (2 ** attempt)
@@ -75,16 +75,26 @@ def main():
     os.makedirs(traces_folder, exist_ok=True)
 
     for month in range(1, 13):
-        monthly_traces = []
-        progress_bar = tqdm(selected_problems, desc=f"Month {month:02d}", leave=False)
-        correct_count = 0
-        for i, problem in enumerate(progress_bar):
+        monthly_traces_file = f"{traces_folder}/month_{month:02d}_traces.json"
+        if os.path.exists(monthly_traces_file):
+            with open(monthly_traces_file, "r") as f:
+                monthly_traces = json.load(f)
+            correct_count = sum(1 for result in monthly_traces if result["is_correct"])
+            start_index = len(monthly_traces)
+            print(f"Month {month:02d} | Resuming from existing traces | Problems solved: {start_index} | Correct: {correct_count}")
+        else:
+            monthly_traces = []
+            correct_count = 0
+            start_index = 0
+
+        progress_bar = tqdm(selected_problems[start_index:], initial=start_index, total=len(selected_problems), desc=f"Month {month:02d}", leave=False)
+        for i, problem in enumerate(progress_bar, start=start_index):
             result = evaluate_claude(problem, month)
             if result["is_correct"]:
                 correct_count += 1
             monthly_traces.append(result)
             accuracy_so_far = correct_count / (i + 1)
-            with open(f"{traces_folder}/month_{month:02d}_traces.json", "w") as f:
+            with open(monthly_traces_file, "w") as f:
                 json.dump(monthly_traces, f, indent=2)
             progress_bar.set_description(f"Month {month:02d} | Progress: {i+1}/{len(selected_problems)} | Correct: {correct_count} | Accuracy: {accuracy_so_far:.2%}")
             time.sleep(1)  # Add a small delay to avoid rate limiting
