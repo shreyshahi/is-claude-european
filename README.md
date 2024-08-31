@@ -5,6 +5,6 @@ I found some variability but nothing statistically significant:
 ![image](gsm8k_accuracy.png)
 
 If you are trying to reproduce the results, delete all the traces and run in following order:
-- evaluate_claude.py (If you are in usage tier 1 may want to slow down and not slam the API)
-- prepare_dataset_for_analysis.py (this creates .csv files I use in R for analysis)
-- data_analysis.R for creating plots etc
+- gsm8g_test/evaluate_claude.py (If you are in usage tier 1 may want to slow down and not slam the API)
+- gsm8g_test/prepare_dataset_for_analysis.py (this creates .csv files I use in R for analysis)
+- gsm8g_test/data_analysis.R for creating plots etc
