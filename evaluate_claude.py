@@ -97,7 +97,6 @@ def main():
             with open(monthly_traces_file, "w") as f:
                 json.dump(monthly_traces, f, indent=2)
             progress_bar.set_description(f"Month {month:02d} | Progress: {i+1}/{len(selected_problems)} | Correct: {correct_count} | Accuracy: {accuracy_so_far:.2%}")
-            time.sleep(1)  # Add a small delay to avoid rate limiting
         results[f"month_{month:02d}"] = correct_count
         time.sleep(5)  # Add a longer delay when switching months
 
